@@ -1,0 +1,74 @@
+pipeline {
+    agent any
+    environment {
+        branch = 'master'
+        scmUrl = 'ssh://tgit@myScmServer.com/repos/myRepo.git'
+        serverPort = '8080'
+        developmentServer = 'dev-myproject.mycompany.com'
+        stagingServer = 'staging-myproject.mycompany.com'
+        productionServer = 'production-myproject.mycompany.com'
+    }
+    // Parameters
+            properties([
+                parameters([
+                    choice(
+                        name: "CONFIG_BRANCH",
+                        choices: ["master", "Development"],
+                        description: "Select your branch"),
+                ]),
+                pipelineTriggers([cron("00 23 * * *")])
+    stages {
+        stage('checkout git') {
+            steps {
+                git branch: branch, credentialsId: 'GitCredentials', url: scmUrl
+            }
+        }
+
+        stage('build') {
+            steps {
+                sh 'mvn clean package -DskipTests=true'
+            }
+        }
+
+        stage ('test') {
+            steps {
+                parallel (
+                    "unit tests": { sh 'mvn test' },
+                    "integration tests": { sh 'mvn integration-test' }
+                )
+            }
+        }
+
+        stage('deploy development'){
+            steps {
+                deploy(developmentServer, serverPort)
+            }
+        }
+
+        stage('deploy staging'){
+            steps {
+                deploy(stagingServer, serverPort)
+            }
+        }
+
+    post {
+            // Do not delete intermediate branch if job fails to allow restart from Test stage
+            aborted {
+                script {
+                    if (sh 'mvn test') {
+                        build(
+                            job: 'stages/delete-mvn',
+                            parameters: [
+                                string(name: 'mvn.  test ', value: "${mvn}"),
+                                string(name: 'SOURCE_BRANCH', value: "${SOURCE_BRANCH}")
+                            ]
+                        )
+                    }
+                }
+
+                stage ('success/failure') {
+                 success/failure {
+            mail to: 'devasish.poudyel@gdit.com', subject: 'Pipeline success/failed', body: "${env.BUILD_URL}"
+        }
+    }
+}
