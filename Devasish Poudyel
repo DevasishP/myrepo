@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+    stages {
+     stage('build'){
+      steps {
+       echo "Hello mr.Erdman!!"
+    }
+}
+
+stage('test') {
+    steps {
+        echo "This is a test"
+    }
+}
+stage('Deploy'){
+    steps {
+    echo "This is a test"
+    }
+}
+stage('Approval') {
+                steps {
+                    // TODO: Add an email notification to user invoking the job?
+                    input message: 'Hello test?'
+                }
+            }
+        }
+    }
+}
